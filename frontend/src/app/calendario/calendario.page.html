@@ -1,0 +1,71 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Calendario</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+
+  <div class="calendario-container">
+
+    <section class="header-section">
+      <h1>Mi calendario académico</h1>
+      <p>
+        Organiza pruebas, entregas, presentaciones y eventos personales.
+      </p>
+    </section>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Próximos eventos</ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+
+        <div class="event-item">
+          <div>
+            <h3>Certamen 1 - Base de Datos</h3>
+            <p>28/09/2026 - 10:00 hrs</p>
+          </div>
+
+          <ion-badge color="danger">
+            Prueba
+          </ion-badge>
+        </div>
+
+        <div class="event-item">
+          <div>
+            <h3>Entrega Ingeniería Web Avanzada</h3>
+            <p>30/09/2026 - 23:59 hrs</p>
+          </div>
+
+          <ion-badge color="warning">
+            Entrega
+          </ion-badge>
+        </div>
+
+        <div class="event-item">
+          <div>
+            <h3>Dentista</h3>
+            <p>02/10/2026 - 15:30 hrs</p>
+          </div>
+
+          <ion-badge color="medium">
+            Personal
+          </ion-badge>
+        </div>
+
+      </ion-card-content>
+    </ion-card>
+
+    <ion-button
+      expand="block"
+      class="add-event-button">
+
+      Agregar evento
+
+    </ion-button>
+
+  </div>
+
+</ion-content>

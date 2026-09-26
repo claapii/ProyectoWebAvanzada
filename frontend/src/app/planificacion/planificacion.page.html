@@ -1,0 +1,68 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Planificación académica</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+
+  <div class="planificacion-container">
+
+    <section class="header-section">
+      <h1>Mis asignaturas</h1>
+      <p>
+        Revisa las asignaturas disponibles según tu avance curricular y sus prerrequisitos.
+      </p>
+    </section>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Base de Datos</ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <p><strong>Código:</strong> INF-XXX</p>
+        <p><strong>Créditos:</strong> 6</p>
+        <p><strong>Prerrequisito:</strong> Programación II</p>
+
+        <ion-badge color="success">
+          Disponible
+        </ion-badge>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Sistemas Operativos</ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <p><strong>Código:</strong> INF-XXX</p>
+        <p><strong>Créditos:</strong> 5</p>
+        <p><strong>Prerrequisito:</strong> Arquitectura de Computadores</p>
+
+        <ion-badge color="danger">
+          Bloqueado
+        </ion-badge>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Ingeniería Web Avanzada</ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <p><strong>Código:</strong> INF-XXX</p>
+        <p><strong>Créditos:</strong> 5</p>
+        <p><strong>Prerrequisito:</strong> Ingeniería Web</p>
+
+        <ion-badge color="success">
+          Disponible
+        </ion-badge>
+      </ion-card-content>
+    </ion-card>
+
+  </div>
+
+</ion-content>

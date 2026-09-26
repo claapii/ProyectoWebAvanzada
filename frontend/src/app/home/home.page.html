@@ -1,20 +1,83 @@
-<ion-header [translucent]="true">
+<ion-header>
   <ion-toolbar>
-    <ion-title>
-      Blank
-    </ion-title>
+    <ion-title>LISTOCO</ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Blank</ion-title>
-    </ion-toolbar>
-  </ion-header>
 
-  <div id="container">
-    <strong>Ready to create an app?</strong>
-    <p>Start with Ionic <a target="_blank" rel="noopener noreferrer" href="https://ionicframework.com/docs/components">UI Components</a></p>
+  <div class="home-container">
+
+    <section class="welcome-section">
+      <h1>Hola 👋</h1>
+      <p>Bienvenido a tu espacio académico.</p>
+    </section>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Resumen académico</ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <p><strong>5 asignaturas</strong></p>
+        <p>30 créditos inscritos</p>
+        <p>Semestre actual: 6°</p>
+      </ion-card-content>
+    </ion-card>
+
+    <h2>Accesos rápidos</h2>
+
+    <div class="quick-actions">
+
+      <ion-button 
+        expand="block"
+        (click)="irAPlanificacion()">
+        Planificación académica
+      </ion-button>
+
+      <ion-button 
+        expand="block"
+        (click)="irAHorarios()">
+        Generar horario
+      </ion-button>
+
+      <ion-button 
+        expand="block"
+        (click)="irATramites()">
+        Trámites académicos
+      </ion-button>
+
+      <ion-button 
+        expand="block"
+        (click)="irACalendario()">
+        Calendario
+      </ion-button>
+
+    </div>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Próxima actividad</ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <p><strong>Base de Datos</strong></p>
+        <p>Certamen 1</p>
+        <p>Lunes - 10:00 hrs</p>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Notificaciones</ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <p>• Tienes una evaluación próxima.</p>
+        <p>• Una solicitud académica se encuentra en revisión.</p>
+      </ion-card-content>
+    </ion-card>
+
   </div>
+
 </ion-content>

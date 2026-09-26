@@ -1,0 +1,50 @@
+<ion-content [fullscreen]="true">
+
+  <div class="login-container">
+
+    <ion-card class="login-card">
+
+      <ion-card-header>
+        <ion-card-title>LISTOCO</ion-card-title>
+
+        <p class="subtitle">
+          Tu apoyo para la vida académica
+        </p>
+      </ion-card-header>
+
+      <ion-card-content>
+
+        <ion-item>
+          <ion-input
+            label="Correo institucional"
+            labelPlacement="stacked"
+            type="email"
+            placeholder="nombre@pucv.cl">
+          </ion-input>
+        </ion-item>
+
+        <ion-item>
+          <ion-input
+            label="Contraseña"
+            labelPlacement="stacked"
+            type="password"
+            placeholder="Ingrese su contraseña">
+          </ion-input>
+        </ion-item>
+
+        <ion-button
+          expand="block"
+          class="login-button"
+          (click)="iniciarSesion()">
+
+          Iniciar sesión
+
+        </ion-button>
+
+      </ion-card-content>
+
+    </ion-card>
+
+  </div>
+
+</ion-content>

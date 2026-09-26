@@ -1,0 +1,68 @@
+.admin-container {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.header-section {
+  margin-bottom: 20px;
+}
+
+.header-section h1 {
+  margin-bottom: 6px;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.header-section p {
+  margin: 0;
+  color: var(--ion-color-medium);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stats-grid ion-card {
+  margin: 0;
+}
+
+.stats-grid h2 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+h2 {
+  margin-top: 24px;
+  margin-bottom: 12px;
+  font-size: 1.3rem;
+}
+
+ion-card {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+ion-badge {
+  margin-top: 8px;
+}
+
+@media (max-width: 800px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-container {
+    padding: 16px;
+  }
+
+  .header-section h1 {
+    font-size: 1.7rem;
+  }
+}

@@ -1,0 +1,103 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Panel administrador</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+
+  <div class="admin-container">
+
+    <section class="header-section">
+      <h1>Resumen del sistema</h1>
+      <p>
+        Revisa solicitudes, demanda de asignaturas y otros indicadores académicos.
+      </p>
+    </section>
+
+    <div class="stats-grid">
+
+      <ion-card>
+        <ion-card-header>
+          <ion-card-title>Solicitudes pendientes</ion-card-title>
+        </ion-card-header>
+
+        <ion-card-content>
+          <h2>12</h2>
+        </ion-card-content>
+      </ion-card>
+
+      <ion-card>
+        <ion-card-header>
+          <ion-card-title>Ramos con alta demanda</ion-card-title>
+        </ion-card-header>
+
+        <ion-card-content>
+          <h2>3</h2>
+        </ion-card-content>
+      </ion-card>
+
+      <ion-card>
+        <ion-card-header>
+          <ion-card-title>Lista de espera</ion-card-title>
+        </ion-card-header>
+
+        <ion-card-content>
+          <h2>28 estudiantes</h2>
+        </ion-card-content>
+      </ion-card>
+
+    </div>
+
+    <h2>Solicitudes recientes</h2>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Justificación de inasistencia</ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <p><strong>Asignatura:</strong> Base de Datos</p>
+        <p><strong>Estudiante:</strong> Estudiante de ejemplo</p>
+
+        <ion-badge color="warning">
+          Pendiente de revisión
+        </ion-badge>
+      </ion-card-content>
+    </ion-card>
+
+    <h2>Asignaturas con alta demanda</h2>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Base de Datos</ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <p><strong>Cupos:</strong> 40</p>
+        <p><strong>Estudiantes interesados:</strong> 73</p>
+
+        <ion-badge color="danger">
+          Alta demanda
+        </ion-badge>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Sistemas Operativos</ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <p><strong>Cupos:</strong> 40</p>
+        <p><strong>Estudiantes interesados:</strong> 58</p>
+
+        <ion-badge color="warning">
+          Demanda elevada
+        </ion-badge>
+      </ion-card-content>
+    </ion-card>
+
+  </div>
+
+</ion-content>

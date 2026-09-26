@@ -1,21 +1,21 @@
-.home-container {
+.tramites-container {
   width: 100%;
   max-width: 900px;
   margin: 0 auto;
   padding: 24px;
 }
 
-.welcome-section {
+.header-section {
   margin-bottom: 20px;
 }
 
-.welcome-section h1 {
+.header-section h1 {
   margin-bottom: 6px;
   font-size: 2rem;
   font-weight: 700;
 }
 
-.welcome-section p {
+.header-section p {
   margin: 0;
   color: var(--ion-color-medium);
 }
@@ -26,7 +26,7 @@ h2 {
   font-size: 1.3rem;
 }
 
-.quick-actions {
+.tramites-actions {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
@@ -38,16 +38,21 @@ ion-card {
   margin-right: 0;
 }
 
+ion-badge {
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 600px) {
-  .home-container {
+  .tramites-container {
     padding: 16px;
   }
 
-  .quick-actions {
+  .tramites-actions {
     grid-template-columns: 1fr;
   }
 
-  .welcome-section h1 {
+  .header-section h1 {
     font-size: 1.7rem;
   }
 }

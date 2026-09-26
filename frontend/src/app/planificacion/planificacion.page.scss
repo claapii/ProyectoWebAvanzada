@@ -1,0 +1,41 @@
+.planificacion-container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.header-section {
+  margin-bottom: 20px;
+}
+
+.header-section h1 {
+  margin-bottom: 6px;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.header-section p {
+  margin: 0;
+  color: var(--ion-color-medium);
+}
+
+ion-card {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+ion-badge {
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 600px) {
+  .planificacion-container {
+    padding: 16px;
+  }
+
+  .header-section h1 {
+    font-size: 1.7rem;
+  }
+}

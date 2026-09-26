@@ -1,0 +1,78 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Trámites académicos</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+
+  <div class="tramites-container">
+
+    <section class="header-section">
+      <h1>Gestiones académicas</h1>
+      <p>
+        Realiza y revisa distintas solicitudes relacionadas con tu vida académica.
+      </p>
+    </section>
+
+    <h2>Nuevo trámite</h2>
+
+    <div class="tramites-actions">
+
+      <ion-button expand="block">
+        Justificar inasistencia
+      </ion-button>
+
+      <ion-button expand="block">
+        Solicitar sobrecupo
+      </ion-button>
+
+      <ion-button expand="block">
+        Problema de inscripción
+      </ion-button>
+
+      <ion-button expand="block">
+        Otra solicitud
+      </ion-button>
+
+    </div>
+
+    <h2>Mis trámites</h2>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          Justificación de inasistencia
+        </ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <p><strong>Asignatura:</strong> Base de Datos</p>
+        <p><strong>Fecha:</strong> 22/09/2026 - 09:30</p>
+
+        <ion-badge color="warning">
+          En revisión
+        </ion-badge>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          Solicitud de sobrecupo
+        </ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <p><strong>Asignatura:</strong> Sistemas Operativos</p>
+        <p><strong>Fecha:</strong> 18/09/2026</p>
+
+        <ion-badge color="medium">
+          Pendiente
+        </ion-badge>
+      </ion-card-content>
+    </ion-card>
+
+  </div>
+
+</ion-content>
