@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   IonContent,
@@ -29,7 +29,7 @@ import {
   ],
 })
 export class HomePage {
-  constructor(private router: Router) {}
+  private readonly router = inject(Router);
 
   irAPlanificacion() {
     this.router.navigate(['/planificacion']);

@@ -1,0 +1,47 @@
+name: CD Staging LISTOCO
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docker:
+    name: Construccion Docker
+    runs-on: ubuntu-latest
+
+    env:
+      APP_ENV: ${{ vars.APP_ENV }}
+      POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+      POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+      POSTGRES_PORT: ${{ vars.POSTGRES_PORT }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
+    steps:
+      - name: Obtener codigo
+        uses: actions/checkout@v7
+
+      - name: Verificar variables configuradas
+        run: |
+          test -n "$APP_ENV"
+          test -n "$POSTGRES_USER"
+          test -n "$POSTGRES_DB"
+          test -n "$POSTGRES_PORT"
+
+      - name: Verificar secretos configurados
+        run: |
+          test -n "$POSTGRES_PASSWORD"
+          test -n "$JWT_SECRET"
+
+      - name: Construir imagen frontend
+        run: docker build -t listoco-frontend ./frontend
+
+      - name: Construir imagen backend
+        run: docker build -t listoco-backend ./backend
+
+      - name: Construir imagen Python
+        run: docker build -t listoco-python ./python-service
