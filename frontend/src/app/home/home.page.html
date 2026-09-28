@@ -29,25 +29,25 @@
 
     <div class="quick-actions">
 
-      <ion-button 
+      <ion-button
         expand="block"
         (click)="irAPlanificacion()">
         Planificación académica
       </ion-button>
 
-      <ion-button 
+      <ion-button
         expand="block"
         (click)="irAHorarios()">
         Generar horario
       </ion-button>
 
-      <ion-button 
+      <ion-button
         expand="block"
         (click)="irATramites()">
         Trámites académicos
       </ion-button>
 
-      <ion-button 
+      <ion-button
         expand="block"
         (click)="irACalendario()">
         Calendario
@@ -75,6 +75,32 @@
       <ion-card-content>
         <p>• Tienes una evaluación próxima.</p>
         <p>• Una solicitud académica se encuentra en revisión.</p>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Conexión con backend</ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <p>
+          Consulta de cursos almacenados en PostgreSQL mediante NestJS.
+        </p>
+
+        <ion-button
+          expand="block"
+          (click)="consultarCursos()">
+          Consultar cursos
+        </ion-button>
+
+        @if (respuestaCursos()) {
+          <pre>{{ respuestaCursos() }}</pre>
+        }
+
+        @if (errorCursos()) {
+          <p>{{ errorCursos() }}</p>
+        }
       </ion-card-content>
     </ion-card>
 

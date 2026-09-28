@@ -1,15 +1,16 @@
-import { Component, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import {
-  IonContent,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
+  IonButton,
   IonCard,
+  IonCardContent,
   IonCardHeader,
   IonCardTitle,
-  IonCardContent,
-  IonButton,
+  IonContent,
+  IonHeader,
+  IonTitle,
+  IonToolbar,
 } from '@ionic/angular';
 
 @Component({
@@ -30,6 +31,24 @@ import {
 })
 export class HomePage {
   private readonly router = inject(Router);
+  private readonly http = inject(HttpClient);
+
+  readonly respuestaCursos = signal('');
+  readonly errorCursos = signal('');
+
+  consultarCursos() {
+    this.errorCursos.set('');
+
+    this.http.get<unknown[]>('http://localhost:3000/courses').subscribe({
+      next: (cursos) => {
+        this.respuestaCursos.set(JSON.stringify(cursos, null, 2));
+      },
+      error: () => {
+        this.respuestaCursos.set('');
+        this.errorCursos.set('No fue posible consultar los cursos.');
+      },
+    });
+  }
 
   irAPlanificacion() {
     this.router.navigate(['/planificacion']);
