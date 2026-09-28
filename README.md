@@ -19,14 +19,34 @@ LISTOCO busca centralizar y simplificar parte de estas actividades mediante una 
 ## Usuarios objetivo
 
 ### Estudiante
+
 Usuario principal de LISTOCO. Podrá utilizar herramientas de planificación académica, gestión de asignaturas, trámites y otras funcionalidades de apoyo a su vida universitaria.
 
 ### Administrador
+
 Usuario encargado de gestionar información y procesos internos necesarios para el funcionamiento de la plataforma.
 
 ## Objetivo general
 
 Desarrollar una plataforma web multiplataforma que apoye a estudiantes de la PUCV en la planificación y gestión de su vida académica mediante herramientas centralizadas y funcionalidades personalizadas.
+
+## Alcance
+
+Durante la EP1, LISTOCO contempla la construcción de una base tecnológica funcional y reproducible para el proyecto.
+
+El alcance incluye:
+
+- prototipo navegable desarrollado con Ionic y Angular;
+- backend inicial desarrollado con NestJS;
+- persistencia mediante PostgreSQL y Prisma;
+- servicio Python desarrollado con FastAPI;
+- comunicación entre NestJS y FastAPI;
+- contenerización mediante Docker y Docker Compose;
+- pipeline DevSecOps con GitHub Actions;
+- gestión de variables y secretos;
+- infraestructura preliminar definida con Terraform.
+
+En esta etapa no se contempla todavía la implementación completa de todas las funcionalidades, el procesamiento definitivo de información web, la capacidad adaptativa final ni un despliegue definitivo de producción.
 
 ## Funcionalidades principales propuestas
 
@@ -74,46 +94,45 @@ El proyecto cuenta actualmente con una estructura inicial compuesta por:
 - backend NestJS;
 - servicio Python con FastAPI.
 
-
 ## Descripción de las variables requeridas
 
 LISTOCO utiliza variables de entorno para separar la configuración del código fuente y evitar almacenar información sensible directamente en el repositorio.
 
 Variables de GitHub Actions no sensibles:
 
-APP_ENV
+APP_ENV  
 Define el ambiente utilizado por el proyecto. Para la EP1 se utiliza staging.
 
-POSTGRES_USER
+POSTGRES_USER  
 Usuario utilizado por PostgreSQL.
 
-POSTGRES_DB
+POSTGRES_DB  
 Nombre de la base de datos PostgreSQL.
 
-POSTGRES_PORT
+POSTGRES_PORT  
 Puerto utilizado para acceder a PostgreSQL desde el host. En el entorno local se utiliza 5433.
 
 Secrets de GitHub Actions:
 
-POSTGRES_PASSWORD
+POSTGRES_PASSWORD  
 Contraseña de PostgreSQL. Debe configurarse como GitHub Actions Secret y nunca almacenarse directamente en el repositorio.
 
-JWT_SECRET
+JWT_SECRET  
 Clave utilizada por NestJS para firmar y validar tokens JWT. Debe configurarse como GitHub Actions Secret.
 
 Variables del backend:
 
-DATABASE_URL
+DATABASE_URL  
 Cadena de conexión utilizada por Prisma para acceder a PostgreSQL.
 
 Ejemplo:
 
 postgresql://listoco:change_me@localhost:5433/listoco?schema=public
 
-JWT_SECRET
+JWT_SECRET  
 Clave para la autenticación basada en JWT.
 
-PYTHON_SERVICE_URL
+PYTHON_SERVICE_URL  
 Dirección utilizada por NestJS para comunicarse con FastAPI.
 
 Ejemplo local:
@@ -122,10 +141,10 @@ http://localhost:8000
 
 Variables de Docker Compose:
 
-POSTGRES_USER
-POSTGRES_PASSWORD
-POSTGRES_DB
-POSTGRES_PORT
+POSTGRES_USER  
+POSTGRES_PASSWORD  
+POSTGRES_DB  
+POSTGRES_PORT  
 JWT_SECRET
 
 Los archivos .env.example contienen únicamente valores ficticios de referencia. Los archivos .env reales se encuentran excluidos mediante .gitignore y no deben subirse al repositorio.
@@ -171,41 +190,43 @@ LISTOCO puede ejecutarse de forma integrada mediante Docker Compose desde la ra�
 
 1. Verificar que Docker Desktop esté iniciado.
 
-2. Crear el archivo .env de la raíz con las variables necesarias. Se puede usar .env.example como referencia.
+2. Construir e iniciar los contenedores:
+
+docker compose up --build
+
+Docker Compose incluye valores de desarrollo predeterminados para permitir la ejecución inicial sin configuración adicional.
+
+Si se desea utilizar una configuración personalizada, puede crearse un archivo .env tomando como referencia .env.example.
 
 Variables utilizadas por Docker Compose:
 
-POSTGRES_USER
-POSTGRES_PASSWORD
-POSTGRES_DB
-POSTGRES_PORT
+POSTGRES_USER  
+POSTGRES_PASSWORD  
+POSTGRES_DB  
+POSTGRES_PORT  
 JWT_SECRET
 
 En el entorno local del proyecto se utiliza el puerto 5433 en el host para PostgreSQL, evitando conflictos con otras instalaciones locales que puedan ocupar el puerto 5432.
 
-3. Construir e iniciar los contenedores:
+3. Servicios principales disponibles:
 
-docker compose up --build
-
-4. Servicios principales disponibles:
-
-Frontend:
+Frontend:  
 http://localhost:8080
 
-Backend NestJS:
+Backend NestJS:  
 http://localhost:3000
 
-Servicio FastAPI:
+Servicio FastAPI:  
 http://localhost:8000
 
-PostgreSQL:
+PostgreSQL:  
 localhost:5433
 
-5. Para detener los contenedores:
+4. Para detener los contenedores:
 
 docker compose down
 
-6. Para eliminar además los volúmenes creados:
+5. Para eliminar además los volúmenes creados:
 
 docker compose down -v
 
@@ -224,7 +245,7 @@ Requisitos previos:
 
 1. Clonar el repositorio:
 
-git clone https://github.com/claapii/ProyectoWebAvanzada.git
+git clone https://github.com/claapii/ProyectoWebAvanzada.git  
 cd ProyectoWebAvanzada
 
 2. Instalar dependencias del frontend:
@@ -237,7 +258,7 @@ npm ci --prefix backend
 
 4. Preparar el entorno Python:
 
-cd python-service
+cd python-service  
 python -m venv .venv
 
 En PowerShell:
@@ -256,24 +277,30 @@ Luego volver a la raíz:
 
 cd ..
 
-5. Crear los archivos de entorno locales a partir de los ejemplos disponibles.
+5. Configuración de variables de entorno para ejecución local sin Docker
 
-En backend/.env se deben configurar, como mínimo:
+Si los servicios se ejecutan directamente en el equipo, se deben crear los archivos de entorno locales tomando como referencia los archivos .env.example.
 
-DATABASE_URL
-JWT_SECRET
+Para el backend se utilizan:
+
+DATABASE_URL  
+JWT_SECRET  
 PYTHON_SERVICE_URL
 
 Los valores sensibles reales no deben almacenarse en el repositorio.
 
+Este paso no es obligatorio cuando el proyecto completo se ejecuta mediante Docker Compose.
+
 6. Inicializar Prisma en el backend cuando corresponda:
 
-cd backend
-npx prisma generate
+cd backend  
+npx prisma generate  
 npx prisma migrate deploy
 
 Luego volver a la raíz del proyecto.
 
 Con estos pasos, el proyecto queda preparado para ejecutarse localmente o mediante Docker Compose.
 
-## https://www.figma.com/proto/lDXAUd1pbXqCx57El8fokI/Listoco?node-id=0-1&t=3o8pen7MmLMEIHnp-1
+## Prototipo en Figma
+
+https://www.figma.com/proto/lDXAUd1pbXqCx57El8fokI/Listoco?node-id=0-1&t=3o8pen7MmLMEIHnp-1
