@@ -2,5 +2,11 @@
 __pycache__
 *.pyc
 .pytest_cache
+.ruff_cache
 .env
 .git
+tests
+scripts
+pytest.ini
+test_main.py
+requirements-dev.txt
