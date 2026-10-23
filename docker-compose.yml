@@ -27,8 +27,25 @@ services:
       dockerfile: Dockerfile
     container_name: listoco-python
     restart: unless-stopped
+    environment:
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-listoco_dev_internal_key}
+      SCRAPER_CONTACT: ${SCRAPER_CONTACT:-contacto-no-configurado}
+      CACHE_DIR: /app/cache
     ports:
       - "8000:8000"
+    volumes:
+      - python_cache:/app/cache
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
@@ -64,3 +81,4 @@ services:
 
 volumes:
   postgres_data:
+  python_cache:
