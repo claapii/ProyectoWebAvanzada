@@ -106,10 +106,10 @@ jobs:
         run: python -m ruff check .
 
       - name: Ejecutar pruebas
-        run: python -m pytest test_main.py -q
+        run: python -m pytest -q
 
       - name: Validar sintaxis
-        run: python -m compileall -q main.py test_main.py
+        run: python -m compileall -q main.py app tests
 
 
   static-analysis:
