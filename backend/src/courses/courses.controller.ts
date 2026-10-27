@@ -7,6 +7,8 @@ import {
   Post,
 } from '@nestjs/common';
 
+import { Auth } from '../auth/auth.decorator.js';
+import { Role } from '../generated/prisma/enums.js';
 import { CoursesService } from './courses.service.js';
 import { CreateCourseDto } from './dto/create-course.dto.js';
 
@@ -25,6 +27,7 @@ export class CoursesController {
   }
 
   @Post()
+  @Auth(Role.ADMIN)
   create(@Body() createCourseDto: CreateCourseDto) {
     return this.coursesService.create(createCourseDto);
   }

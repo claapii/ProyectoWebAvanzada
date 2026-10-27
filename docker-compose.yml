@@ -57,6 +57,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-listoco}:${POSTGRES_PASSWORD:-listoco_dev}@postgres:5432/${POSTGRES_DB:-listoco}?schema=public
       JWT_SECRET: ${JWT_SECRET:-listoco_dev_jwt_secret}
       PYTHON_SERVICE_URL: http://python:8000
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     ports:
       - "3000:3000"
     depends_on:
