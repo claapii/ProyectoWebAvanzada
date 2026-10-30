@@ -20,6 +20,13 @@ import { IngestionService } from './ingestion.service.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const isDisposable = !!databaseUrl && /test/i.test(new URL(databaseUrl).pathname);
+// En el CI estas pruebas son obligatorias: si la base no está configurada, fallar
+// en vez de omitirlas en silencio y dar una falsa sensación de seguridad.
+if (process.env.REQUIRE_DB_TESTS === 'true' && !isDisposable) {
+  throw new Error(
+    'REQUIRE_DB_TESTS=true, pero TEST_DATABASE_URL no apunta a una base de pruebas',
+  );
+}
 
 describe.skipIf(!isDisposable)('Ingesta contra PostgreSQL real', () => {
   const prisma = new PrismaClient({
