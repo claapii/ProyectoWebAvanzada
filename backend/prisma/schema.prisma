@@ -12,21 +12,99 @@ enum Role {
   ADMIN
 }
 
+enum IngestionStatus {
+  SUCCESS
+  DEGRADED
+  FAILED
+}
+
 model User {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
-  passwordHash String
-  role         Role     @default(STUDENT)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            Int            @id @default(autoincrement())
+  email         String         @unique
+  passwordHash  String
+  role          Role           @default(STUDENT)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  ingestionRuns IngestionRun[]
+}
+
+// Fuente web externa de la que se obtienen datos (por ejemplo, el PDF de la PUCV).
+model DataSource {
+  id        Int            @id @default(autoincrement())
+  key       String         @unique
+  name      String
+  url       String
+  createdAt DateTime       @default(now())
+  runs      IngestionRun[]
+  courses   Course[]
+}
+
+// Una ejecución de la ingesta: procedencia del documento, métricas de calidad
+// y resultado de la persistencia. Permite auditar y comparar corridas.
+model IngestionRun {
+  id            Int             @id @default(autoincrement())
+  sourceId      Int
+  source        DataSource      @relation(fields: [sourceId], references: [id])
+  triggeredById Int?
+  triggeredBy   User?           @relation(fields: [triggeredById], references: [id])
+  status        IngestionStatus
+  requestId     String?
+  startedAt     DateTime        @default(now())
+  finishedAt    DateTime?
+  durationMs    Int?
+
+  // Procedencia del documento
+  sha256           String?
+  contentLength    Int?
+  resolution       String?
+  fromCache        Boolean @default(false)
+  changed          Boolean?
+  extractorVersion String?
+
+  // Métricas de calidad de los datos recuperados
+  candidates        Int?
+  validCount        Int?
+  rejectedCount     Int?
+  duplicateCount    Int?
+  semestersDetected Int?
+  semestersExpected Int?
+  coverage          Float?
+  validRatio        Float?
+
+  // Resultado de la persistencia
+  createdCount     Int?
+  updatedCount     Int?
+  deactivatedCount Int?
+
+  warnings     String[]
+  errorCode    String?
+  errorMessage String?
+
+  courses Course[]
+
+  @@index([sourceId, startedAt])
+  @@index([status])
 }
 
 model Course {
-  id                Int      @id @default(autoincrement())
-  code              String   @unique
+  id                Int           @id @default(autoincrement())
+  code              String        @unique
   name              String
-  credits           Int
+  // La fuente web no publica créditos: se completan después con la fuente curada.
+  credits           Int?
   suggestedSemester Int
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  category          String?
+  active            Boolean       @default(true)
+  // Procedencia: de qué fuente y de qué corrida viene el dato, y cuándo se vio por última vez.
+  sourceId          Int?
+  source            DataSource?   @relation(fields: [sourceId], references: [id])
+  lastRunId         Int?
+  lastRun           IngestionRun? @relation(fields: [lastRunId], references: [id])
+  lastSeenAt        DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([suggestedSemester])
+  @@index([category])
+  @@index([sourceId, active])
 }

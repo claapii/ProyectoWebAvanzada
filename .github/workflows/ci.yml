@@ -39,11 +39,38 @@ jobs:
       - name: Lint TypeScript
         run: npm run lint
 
-      - name: Ejecutar pruebas
+      - name: Iniciar PostgreSQL efimero para pruebas de integracion
+        run: |
+          PASSWORD="$(openssl rand -hex 16)"
+          echo "::add-mask::${PASSWORD}"
+          docker run -d --name postgres-test \
+            -e POSTGRES_USER=listoco_test \
+            -e POSTGRES_PASSWORD="${PASSWORD}" \
+            -e POSTGRES_DB=listoco_test \
+            -p 5432:5432 \
+            postgres:17-alpine
+          echo "TEST_DATABASE_URL=postgresql://listoco_test:${PASSWORD}@localhost:5432/listoco_test?schema=public" >> "$GITHUB_ENV"
+          for i in $(seq 1 30); do
+            docker exec postgres-test pg_isready -h 127.0.0.1 -U listoco_test -d listoco_test && exit 0
+            sleep 1
+          done
+          echo "PostgreSQL no estuvo listo a tiempo"
+          exit 1
+
+      - name: Aplicar migraciones a la base de pruebas
+        run: DATABASE_URL="$TEST_DATABASE_URL" npx prisma migrate deploy
+
+      - name: Ejecutar pruebas (unitarias e integracion con PostgreSQL)
+        env:
+          REQUIRE_DB_TESTS: "true"
         run: npm run test
 
       - name: Construir NestJS
         run: npm run build
+
+      - name: Detener PostgreSQL de pruebas
+        if: always()
+        run: docker rm -f postgres-test
 
 
   frontend:

@@ -1,26 +1,14 @@
-import {
-  Injectable,
-  ServiceUnavailableException,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+
+import { PythonClient } from './python-client.service.js';
 
 @Injectable()
 export class PythonService {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly pythonClient: PythonClient) {}
 
   async getHealth() {
-    const pythonUrl =
-      this.configService.get<string>('PYTHON_SERVICE_URL') ??
-      'http://localhost:8000';
-
     try {
-      const response = await fetch(`${pythonUrl}/health`);
-
-      if (!response.ok) {
-        throw new Error('FastAPI respondió con error');
-      }
-
-      return await response.json();
+      return await this.pythonClient.health();
     } catch {
       throw new ServiceUnavailableException(
         'El servicio Python no está disponible',

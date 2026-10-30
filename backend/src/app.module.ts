@@ -8,6 +8,7 @@ import { CoursesModule } from './courses/courses.module.js';
 import { HealthModule } from './health/health.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { PythonModule } from './python/python.module.js';
+import { IngestionModule } from './ingestion/ingestion.module.js';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { PythonModule } from './python/python.module.js';
     CoursesModule,
     AuthModule,
     PythonModule,
+    IngestionModule,
   ],
   controllers: [AppController],
   providers: [AppService],
