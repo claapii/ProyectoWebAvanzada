@@ -174,7 +174,7 @@ La PUCV publica el plan de estudios como un PDF enlazado desde la página de la 
 **Uso responsable**
 
 - `robots.txt` (verificado el 2026-10-23): permite el acceso a cualquier user-agent (`User-agent: *` con `Disallow:` vacío). El servicio consulta `robots.txt` antes de cada descarga y no descarga si lo prohíbe.
-- Términos de uso del sitio: No se encontró un apartado de términos de uso.
+- Términos de uso del sitio: revisión realizada el 2026-10-23 (menú principal y pie de página de pucv.cl); no se encontró un documento de términos de uso publicado. Se procede considerando que `robots.txt` permite el acceso, que el documento es público y que el uso es mínimo (una descarga por ejecución, con identificación del proyecto y sin datos personales). Si la PUCV publica condiciones de uso, se revisarán y se ajustará esta decisión.
 - Límites: una descarga por ejecución, timeouts de 5 s (conexión) y 20 s (lectura), tamaño máximo de 10 MB, User-Agent identificable con contacto del equipo y verificación de que el contenido sea un PDF.
 - Privacidad: documento público institucional; no se procesan datos personales.
 - Atribución: la PUCV figura como fuente. El proyecto es académico y no tiene afiliación con la universidad. La malla es referencial y corresponde a un plan de 2020-2021, por lo que puede no reflejar cambios posteriores.
@@ -227,6 +227,45 @@ Si no se encuentran cajas, la extracción falla con un error explícito.
 - La técnica depende del diseño del PDF: ante un rediseño falla de forma explícita en vez de devolver datos incorrectos, y el cambio de hash lo hace visible.
 - Hay una prueba de regresión contra el PDF real (`tests/test_real_pdf.py`) y una herramienta de diagnóstico (`scripts/inspect_pdf.py`) para revisar nuevas versiones.
 - Se agrega la dependencia `pdfplumber`.
+
+---
+
+## ADR-009 — Staging en Azure: máquina virtual con Docker Compose y despliegue por SSH
+
+### Contexto
+
+La EP2 exige un ambiente de staging con despliegue automático desde GitHub Actions, verificación de salud, versión identificable del repositorio, estrategia de rollback e infraestructura definida con Terraform, con el estado fuera del repositorio.
+
+Hoy el CD solo construye las imágenes en el runner y Terraform solo genera un archivo local: no existe un ambiente donde se publique la aplicación. El equipo cuenta con el crédito de Azure for Students (sin tarjeta), y la oferta de DigitalOcean para estudiantes dejó de estar disponible en 2026.
+
+### Decisión
+
+- **Proveedor:** Microsoft Azure, con el crédito de Azure for Students.
+- **Cómputo:** una máquina virtual Linux (Ubuntu LTS) que ejecuta los servicios con Docker Compose. El tamaño y la región se definen según los precios vigentes y las restricciones de la suscripción.
+- **Red:** IP pública con etiqueta DNS de Azure. El grupo de seguridad expone el puerto 443 (y el 80 para el certificado); el puerto 22 se usa solo para el despliegue, con autenticación únicamente por llave.
+- **HTTPS:** Caddy como proxy inverso con certificados automáticos. Sirve el frontend y enruta `/api` hacia NestJS. El servicio Python y PostgreSQL no se exponen fuera de la red de Docker. HTTPS es necesario para que la PWA instale su service worker.
+- **Imágenes:** se publican en GitHub Container Registry, etiquetadas con el SHA completo del commit.
+- **Despliegue:** un workflow de GitHub Actions, después de pasar los controles, descarga las imágenes del SHA, levanta los servicios y consulta `/health`. Si el health check falla, vuelve automáticamente al SHA anterior.
+- **Versión identificable:** el backend informa en `/health` el SHA desplegado, lo que permite comprobar qué versión del repositorio corre en staging.
+- **Terraform:** proveedor `azurerm`; `terraform fmt -check`, `init`, `validate` y `plan` se ejecutan en el CI; `apply` se ejecuta de forma controlada (manual). El estado se guarda en un almacenamiento remoto de Azure, no en el repositorio.
+- **Secretos:** llave SSH, credenciales de Azure, `JWT_SECRET`, claves de base de datos, `INTERNAL_API_KEY` y `ADMIN_PASSWORD` van como GitHub Secrets; la configuración no sensible, como GitHub Variables.
+
+**Alternativas descartadas**
+
+| Alternativa | Motivo |
+|---|---|
+| Servicios administrados de Azure (Container Apps o App Service con PostgreSQL administrado) | Más recursos que configurar y un costo mayor, porque la base administrada consume buena parte del crédito |
+| DigitalOcean | La oferta para estudiantes terminó en 2026 |
+| Kubernetes (AKS) | Complejidad y costo desproporcionados para el alcance del proyecto |
+| Despliegue manual | No cumple la rúbrica |
+
+### Consecuencias
+
+- Se reutiliza el `docker-compose.yml` existente y el rollback queda explícito y demostrable por SHA.
+- La base de datos corre en un contenedor con volumen en la misma máquina: no hay alta disponibilidad ni respaldos administrados. Para staging es aceptable; queda pendiente un respaldo periódico con `pg_dump`.
+- La máquina es un punto único de falla.
+- El puerto SSH queda accesible para el despliegue. Se mitiga con autenticación solo por llave, sin contraseña y con un usuario sin privilegios de administrador.
+- El crédito de estudiante es limitado y temporal (12 meses, renovable): la máquina se puede desasignar entre pruebas para no consumirlo.
 
 ---
 
