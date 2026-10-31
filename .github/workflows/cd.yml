@@ -8,10 +8,18 @@ on:
 permissions:
   contents: read
 
+# Un solo CD a la vez: evita que dos despliegues se pisen entre si.
+concurrency:
+  group: cd-staging
+  cancel-in-progress: false
+
 jobs:
-  docker:
-    name: Construccion Docker
+  publish:
+    name: Construir, escanear y publicar imagenes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     env:
       APP_ENV: ${{ vars.APP_ENV }}
@@ -37,11 +45,78 @@ jobs:
           test -n "$POSTGRES_PASSWORD"
           test -n "$JWT_SECRET"
 
+      - name: Definir nombres de las imagenes
+        run: |
+          # GHCR exige nombres en minusculas.
+          OWNER="$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
+          echo "IMAGE_PREFIX=ghcr.io/${OWNER}/listoco" >> "$GITHUB_ENV"
+
       - name: Construir imagen frontend
-        run: docker build -t listoco-frontend ./frontend
+        run: |
+          docker build \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            -t "${IMAGE_PREFIX}-frontend:${GITHUB_SHA}" ./frontend
 
       - name: Construir imagen backend
-        run: docker build -t listoco-backend ./backend
+        run: |
+          docker build \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            -t "${IMAGE_PREFIX}-backend:${GITHUB_SHA}" ./backend
 
       - name: Construir imagen Python
-        run: docker build -t listoco-python ./python-service
+        run: |
+          docker build \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            -t "${IMAGE_PREFIX}-python:${GITHUB_SHA}" ./python-service
+
+      # Trivy se descarga de una version fija y se comprueba su hash SHA-256: en
+      # marzo de 2026 una version y las etiquetas de sus acciones oficiales fueron
+      # comprometidas, asi que no se usa ninguna etiqueta flotante.
+      - name: Instalar Trivy (version fija verificada por hash)
+        env:
+          TRIVY_VERSION: "0.76.0"
+          TRIVY_SHA256: "e24b1c51293c1b15e4ba8d45bbc7891ba053f90278ec2698f3562c993e145fe7"
+        run: |
+          curl -sSfL -o trivy.tar.gz \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  trivy.tar.gz" | sha256sum --check --strict
+          tar -xzf trivy.tar.gz trivy
+          sudo install -m 0755 trivy /usr/local/bin/trivy
+          trivy --version
+
+      - name: Analizar vulnerabilidades de las imagenes
+        run: |
+          for service in frontend backend python; do
+            image="${IMAGE_PREFIX}-${service}:${GITHUB_SHA}"
+            echo "::group::${service}: informe de vulnerabilidades ALTAS y CRITICAS"
+            trivy image --no-progress --ignore-unfixed --severity HIGH,CRITICAL "${image}"
+            echo "::endgroup::"
+            # Control de calidad: una vulnerabilidad CRITICA con correccion disponible bloquea la publicacion.
+            trivy image --no-progress --ignore-unfixed --severity CRITICAL --exit-code 1 "${image}"
+          done
+
+      - name: Iniciar sesion en GitHub Container Registry
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Publicar imagenes
+        run: |
+          for service in frontend backend python; do
+            docker push "${IMAGE_PREFIX}-${service}:${GITHUB_SHA}"
+          done
+
+      - name: Resumen de la version publicada
+        run: |
+          {
+            echo "### Imagenes publicadas"
+            echo ""
+            echo "Commit: \`${GITHUB_SHA}\`"
+            echo ""
+            for service in frontend backend python; do
+              echo "- \`${IMAGE_PREFIX}-${service}:${GITHUB_SHA}\`"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
