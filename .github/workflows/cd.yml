@@ -89,14 +89,20 @@ jobs:
 
       - name: Analizar vulnerabilidades de las imagenes
         run: |
+          # Se analizan las tres imagenes antes de decidir, para ver todos los problemas en una sola ejecucion.
+          failed=0
           for service in frontend backend python; do
             image="${IMAGE_PREFIX}-${service}:${GITHUB_SHA}"
             echo "::group::${service}: informe de vulnerabilidades ALTAS y CRITICAS"
-            trivy image --no-progress --ignore-unfixed --severity HIGH,CRITICAL "${image}"
+            trivy image --no-progress --ignore-unfixed --severity HIGH,CRITICAL --exit-code 0 "${image}"
             echo "::endgroup::"
             # Control de calidad: una vulnerabilidad CRITICA con correccion disponible bloquea la publicacion.
-            trivy image --no-progress --ignore-unfixed --severity CRITICAL --exit-code 1 "${image}"
+            if ! trivy image --quiet --no-progress --ignore-unfixed --severity CRITICAL --exit-code 1 "${image}"; then
+              echo "::error::La imagen ${service} tiene vulnerabilidades CRITICAS con correccion disponible"
+              failed=1
+            fi
           done
+          exit "${failed}"
 
       - name: Iniciar sesion en GitHub Container Registry
         env:
