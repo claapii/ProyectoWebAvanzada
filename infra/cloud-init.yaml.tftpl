@@ -1,0 +1,17 @@
+#cloud-config
+# Primer arranque del servidor de staging: Docker, proteccion contra fuerza bruta
+# en SSH y el directorio donde se despliega la aplicacion.
+package_update: true
+package_upgrade: true
+
+packages:
+  - docker.io
+  - docker-compose-v2
+  - fail2ban
+
+runcmd:
+  - systemctl enable --now docker
+  - systemctl enable --now fail2ban
+  - usermod -aG docker ${admin_username}
+  - mkdir -p /opt/listoco
+  - chown ${admin_username}:${admin_username} /opt/listoco

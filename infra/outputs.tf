@@ -1,14 +1,24 @@
-output "project_name" {
-  description = "Nombre del proyecto"
-  value       = var.project_name
+output "resource_group_name" {
+  description = "Grupo de recursos del staging."
+  value       = azurerm_resource_group.main.name
 }
 
-output "environment" {
-  description = "Ambiente configurado"
-  value       = var.environment
+output "vm_name" {
+  description = "Nombre de la maquina virtual."
+  value       = azurerm_linux_virtual_machine.main.name
 }
 
-output "staging_description_file" {
-  description = "Archivo generado con la descripcion del ambiente staging"
-  value       = local_file.staging_info.filename
+output "public_ip_address" {
+  description = "IP publica del servidor de staging."
+  value       = azurerm_public_ip.main.ip_address
+}
+
+output "fqdn" {
+  description = "Nombre DNS del servidor; es la direccion publica (HTTPS) de la aplicacion."
+  value       = azurerm_public_ip.main.fqdn
+}
+
+output "ssh_command" {
+  description = "Comando para entrar al servidor (requiere la llave privada)."
+  value       = "ssh ${var.admin_username}@${azurerm_public_ip.main.fqdn}"
 }
