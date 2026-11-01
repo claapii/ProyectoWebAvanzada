@@ -205,6 +205,67 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 
+    terraform:
+    name: Terraform (fmt, validate y plan)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: infra
+
+    env:
+      TF_IN_AUTOMATION: "true"
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      TF_VAR_location: ${{ vars.AZURE_LOCATION }}
+      TF_VAR_dns_label: ${{ vars.AZURE_DNS_LABEL }}
+      TF_VAR_ssh_public_key: ${{ vars.SSH_PUBLIC_KEY }}
+      TFSTATE_RESOURCE_GROUP: ${{ vars.TFSTATE_RESOURCE_GROUP }}
+      TFSTATE_STORAGE_ACCOUNT: ${{ vars.TFSTATE_STORAGE_ACCOUNT }}
+      TFSTATE_CONTAINER: ${{ vars.TFSTATE_CONTAINER }}
+
+    steps:
+      - name: Obtener codigo
+        uses: actions/checkout@v7
+
+      # Version fija y hash SHA-256 verificado (SHA256SUMS oficial de HashiCorp).
+      - name: Instalar Terraform
+        env:
+          TERRAFORM_VERSION: "1.16.6"
+          TERRAFORM_SHA256: "38034b38d03096399a7a1264a14561a8029b2b496fd1f169452656e53968f1b7"
+        run: |
+          curl -sSfL -o /tmp/terraform.zip \
+            "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+          echo "${TERRAFORM_SHA256}  /tmp/terraform.zip" | sha256sum --check --strict
+          sudo unzip -o /tmp/terraform.zip terraform -d /usr/local/bin
+          terraform version
+
+      - name: Formato (terraform fmt)
+        run: terraform fmt -check -recursive
+
+      - name: Inicializar sin estado remoto
+        run: terraform init -backend=false -input=false
+
+      - name: Validar (terraform validate)
+        run: terraform validate
+
+      - name: Plan contra Azure
+        if: ${{ env.ARM_CLIENT_ID != '' && env.TFSTATE_STORAGE_ACCOUNT != '' }}
+        run: |
+          terraform init -input=false -reconfigure \
+            -backend-config="resource_group_name=${TFSTATE_RESOURCE_GROUP}" \
+            -backend-config="storage_account_name=${TFSTATE_STORAGE_ACCOUNT}" \
+            -backend-config="container_name=${TFSTATE_CONTAINER}" \
+            -backend-config="key=staging.tfstate"
+          terraform plan -input=false -lock-timeout=60s
+
+      - name: Aviso si no se ejecuto el plan
+        if: ${{ env.ARM_CLIENT_ID == '' || env.TFSTATE_STORAGE_ACCOUNT == '' }}
+        run: |
+          echo "::warning::Plan omitido, faltan las credenciales de Azure o los datos del estado remoto (ver infra/README.md)."
+  
   quality-gate:
     name: CI Gate
     runs-on: ubuntu-latest
@@ -216,6 +277,7 @@ jobs:
       - static-analysis
       - dependency-analysis
       - secrets
+      - terraform
 
     steps:
       - name: Confirmar etapas criticas

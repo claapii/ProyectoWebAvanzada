@@ -40,3 +40,8 @@ crash.*.log
 .idea/
 .DS_Store
 Thumbs.db
+
+# Terraform: planes y variables locales
+*.tfplan
+tfplan
+*.tfvars
