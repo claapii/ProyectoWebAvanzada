@@ -2,20 +2,19 @@ name: CD Staging LISTOCO
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Un solo CD a la vez: evita que dos despliegues se pisen entre si.
 concurrency:
   group: cd-staging
   cancel-in-progress: false
 
 jobs:
-  publish:
-    name: Construir, escanear y publicar imagenes
+  publish-and-deploy:
+    name: Construir, escanear, publicar y desplegar
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -47,7 +46,6 @@ jobs:
 
       - name: Definir nombres de las imagenes
         run: |
-          # GHCR exige nombres en minusculas.
           OWNER="$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
           echo "IMAGE_PREFIX=ghcr.io/${OWNER}/listoco" >> "$GITHUB_ENV"
 
@@ -72,10 +70,7 @@ jobs:
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             -t "${IMAGE_PREFIX}-python:${GITHUB_SHA}" ./python-service
 
-      # Trivy se descarga de una version fija y se comprueba su hash SHA-256: en
-      # marzo de 2026 una version y las etiquetas de sus acciones oficiales fueron
-      # comprometidas, asi que no se usa ninguna etiqueta flotante.
-      - name: Instalar Trivy (version fija verificada por hash)
+# Trivy se descarga de una version fija y se comprueba su hash SHA-256: en      # marzo de 2026 una version y las etiquetas de sus acciones oficiales fueron      # comprometidas, asi que no se usa n      - name: Instalar Trivy (version fija verificada por hash)
         env:
           TRIVY_VERSION: "0.76.0"
           TRIVY_SHA256: "e24b1c51293c1b15e4ba8d45bbc7891ba053f90278ec2698f3562c993e145fe7"
@@ -94,15 +89,10 @@ jobs:
           for service in frontend backend python; do
             image="${IMAGE_PREFIX}-${service}:${GITHUB_SHA}"
             echo "::group::${service}: informe de vulnerabilidades ALTAS y CRITICAS"
-            trivy image --no-progress --ignore-unfixed --severity HIGH,CRITICAL --exit-code 0 "${image}"
+            trivy image --no-progress --ignore-unfixed --severity HIGH,CRITICAL "${image}"
             echo "::endgroup::"
-            # Control de calidad: una vulnerabilidad CRITICA con correccion disponible bloquea la publicacion.
-            if ! trivy image --quiet --no-progress --ignore-unfixed --severity CRITICAL --exit-code 1 "${image}"; then
-              echo "::error::La imagen ${service} tiene vulnerabilidades CRITICAS con correccion disponible"
-              failed=1
-            fi
+            trivy image --no-progress --ignore-unfixed --severity CRITICAL --exit-code 1 "${image}"
           done
-          exit "${failed}"
 
       - name: Iniciar sesion en GitHub Container Registry
         env:
@@ -115,14 +105,76 @@ jobs:
             docker push "${IMAGE_PREFIX}-${service}:${GITHUB_SHA}"
           done
 
+      - name: Copiar manifestos de despliegue a la VM
+        if: ${{ secrets.AZURE_VM_IP != '' && secrets.SSH_PRIVATE_KEY != '' }}
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.AZURE_VM_IP }}
+          username: azureuser
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.staging.yml,Caddyfile"
+          target: "~/app"
+
+      - name: Desplegar por SSH y verificar salud (con Rollback)
+        if: ${{ secrets.AZURE_VM_IP != '' && secrets.SSH_PRIVATE_KEY != '' }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AZURE_VM_IP }}
+          username: azureuser
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p ~/app && cd ~/app
+            export IMAGE_PREFIX="${{ env.IMAGE_PREFIX }}"
+            export IMAGE_TAG="${{ github.sha }}"
+            export APP_ENV="${{ vars.APP_ENV }}"
+            export POSTGRES_USER="${{ vars.POSTGRES_USER }}"
+            export POSTGRES_DB="${{ vars.POSTGRES_DB }}"
+            export POSTGRES_PORT="${{ vars.POSTGRES_PORT }}"
+            export POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
+            export JWT_SECRET="${{ secrets.JWT_SECRET }}"
+
+            # Capturar tag de la versión previa antes de desplegar
+            PREV_TAG=$(docker inspect --format='{{.Config.Image}}' app-backend-1 2>/dev/null | cut -d':' -f2 || echo "")
+
+            echo "Autenticando en GHCR y descargando imágenes de commit ${IMAGE_TAG}..."
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            docker compose -f docker-compose.staging.yml pull
+            
+            echo "Levantando contenedores..."
+            docker compose -f docker-compose.staging.yml up -d --remove-orphans
+
+            echo "Ejecutando Health Check en http://localhost/api/health..."
+            HEALTH_OK=false
+            for i in {1..10}; do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/api/health || echo "000")
+              if [ "$STATUS" = "200" ]; then
+                echo "Health Check Exitoso (HTTP 200)!"
+                HEALTH_OK=true
+                break
+              fi
+              echo "Esperando respuesta de servicios... intento $i/10 (HTTP $STATUS)"
+              sleep 5
+            done
+
+            if [ "$HEALTH_OK" = false ]; then
+              echo "Health Check fallido. Ejecutando rollback automatico..."
+              if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "$IMAGE_TAG" ]; then
+                echo "Restaurando servicios a versión previa: $PREV_TAG"
+                IMAGE_TAG="$PREV_TAG" docker compose -f docker-compose.staging.yml up -d
+              else
+                echo "No existe versión previa válida para restaurar."
+              fi
+              exit 1
+            fi
+
       - name: Resumen de la version publicada
         run: |
           {
-            echo "### Imagenes publicadas"
+            echo "### Despliegue en Staging finalizado"
             echo ""
             echo "Commit: \`${GITHUB_SHA}\`"
             echo ""
-            for service in frontend backend python; do
-              echo "- \`${IMAGE_PREFIX}-${service}:${GITHUB_SHA}\`"
-            done
+            echo "- \`${IMAGE_PREFIX}-frontend:${GITHUB_SHA}\`"
+            echo "- \`${IMAGE_PREFIX}-backend:${GITHUB_SHA}\`"
+            echo "- \`${IMAGE_PREFIX}-python:${GITHUB_SHA}\`"
           } >> "$GITHUB_STEP_SUMMARY"

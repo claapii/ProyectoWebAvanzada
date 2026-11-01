@@ -1,0 +1,16 @@
+:80 {
+    # API Backend NestJS
+    handle_path /api/* {
+        reverse_proxy backend:3000
+    }
+
+    # Microservicio Python FastAPI
+    handle_path /python/* {
+        reverse_proxy python-service:8000
+    }
+
+    # Frontend Angular / Ionic
+    handle {
+        reverse_proxy frontend:80
+    }
+}

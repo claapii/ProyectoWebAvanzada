@@ -1,0 +1,65 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_staging_data:/data
+      - caddy_staging_config:/config
+    depends_on:
+      - frontend
+      - backend
+
+  frontend:
+    image: ${IMAGE_PREFIX}-frontend:${IMAGE_TAG}
+    restart: unless-stopped
+
+  backend:
+    image: ${IMAGE_PREFIX}-backend:${IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - APP_ENV=${APP_ENV}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_HOST=db
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}?schema=public
+      - JWT_SECRET=${JWT_SECRET}
+      - PYTHON_SERVICE_URL=http://python-service:8000
+    depends_on:
+      db:
+        condition: service_healthy
+      python-service:
+        condition: service_started
+
+  python-service:
+    image: ${IMAGE_PREFIX}-python:${IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      - PORT=8000
+
+volumes:
+  postgres_staging_data:
+  caddy_staging_data:
+  caddy_staging_config:
