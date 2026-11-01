@@ -2,13 +2,12 @@ name: CD Staging LISTOCO
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Un solo CD a la vez: evita que dos despliegues se pisen entre si.
 concurrency:
   group: cd-staging
   cancel-in-progress: false
@@ -20,61 +19,31 @@ jobs:
     permissions:
       contents: read
       packages: write
-
-    env:
-      APP_ENV: ${{ vars.APP_ENV }}
-      POSTGRES_USER: ${{ vars.POSTGRES_USER }}
-      POSTGRES_DB: ${{ vars.POSTGRES_DB }}
-      POSTGRES_PORT: ${{ vars.POSTGRES_PORT }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-
+    outputs:
+      image_prefix: ${{ steps.names.outputs.image_prefix }}
     steps:
       - name: Obtener codigo
         uses: actions/checkout@v7
 
-      - name: Verificar variables configuradas
-        run: |
-          test -n "$APP_ENV"
-          test -n "$POSTGRES_USER"
-          test -n "$POSTGRES_DB"
-          test -n "$POSTGRES_PORT"
-
-      - name: Verificar secretos configurados
-        run: |
-          test -n "$POSTGRES_PASSWORD"
-          test -n "$JWT_SECRET"
-
       - name: Definir nombres de las imagenes
+        id: names
         run: |
-          # GHCR exige nombres en minusculas.
           OWNER="$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
           echo "IMAGE_PREFIX=ghcr.io/${OWNER}/listoco" >> "$GITHUB_ENV"
+          echo "image_prefix=ghcr.io/${OWNER}/listoco" >> "$GITHUB_OUTPUT"
 
-      - name: Construir imagen frontend
+      - name: Construir imagenes
         run: |
-          docker build \
-            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
-            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
-            -t "${IMAGE_PREFIX}-frontend:${GITHUB_SHA}" ./frontend
+          build() {
+            docker build \
+              --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+              --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+              -t "${IMAGE_PREFIX}-$1:${GITHUB_SHA}" "$2"
+          }
+          build frontend ./frontend
+          build backend ./backend
+          build python ./python-service
 
-      - name: Construir imagen backend
-        run: |
-          docker build \
-            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
-            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
-            -t "${IMAGE_PREFIX}-backend:${GITHUB_SHA}" ./backend
-
-      - name: Construir imagen Python
-        run: |
-          docker build \
-            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
-            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
-            -t "${IMAGE_PREFIX}-python:${GITHUB_SHA}" ./python-service
-
-      # Trivy se descarga de una version fija y se comprueba su hash SHA-256: en
-      # marzo de 2026 una version y las etiquetas de sus acciones oficiales fueron
-      # comprometidas, asi que no se usa ninguna etiqueta flotante.
       - name: Instalar Trivy (version fija verificada por hash)
         env:
           TRIVY_VERSION: "0.76.0"
@@ -115,14 +84,189 @@ jobs:
             docker push "${IMAGE_PREFIX}-${service}:${GITHUB_SHA}"
           done
 
-      - name: Resumen de la version publicada
+  deploy:
+    name: Desplegar en staging (SSH, health check y rollback)
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    env:
+      IMAGE_PREFIX: ${{ needs.publish.outputs.image_prefix }}
+      DEPLOY_USER: ${{ vars.SSH_ADMIN_USER || 'deploy' }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      AZURE_DNS_LABEL: ${{ vars.AZURE_DNS_LABEL }}
+      AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+      APP_ENV: ${{ vars.APP_ENV }}
+      POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+      POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+      SCRAPER_CONTACT: ${{ vars.SCRAPER_CONTACT }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+    steps:
+      - name: Obtener codigo
+        uses: actions/checkout@v7
+
+      # GitHub no permite usar "secrets." dentro de un "if:". Por eso los secretos se
+      # pasan a variables de entorno y la decision se guarda como salida del paso.
+      - name: Revisar configuracion del despliegue
+        id: cfg
+        run: |
+          if [ -z "$SSH_PRIVATE_KEY" ] || [ -z "$AZURE_DNS_LABEL" ] || [ -z "$AZURE_LOCATION" ]; then
+            echo "::warning::Despliegue omitido: faltan SSH_PRIVATE_KEY, AZURE_DNS_LABEL o AZURE_LOCATION (ver infra/README.md)."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          missing=""
+          for name in APP_ENV POSTGRES_USER POSTGRES_DB POSTGRES_PASSWORD JWT_SECRET INTERNAL_API_KEY; do
+            if [ -z "${!name}" ]; then
+              missing="${missing} ${name}"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Faltan variables o secretos de GitHub:${missing}"
+            exit 1
+          fi
+
+          case "$AZURE_DNS_LABEL" in
+            *[!a-z0-9-]*) echo "::error::AZURE_DNS_LABEL solo admite minusculas, numeros y guiones"; exit 1 ;;
+          esac
+          case "$AZURE_LOCATION" in
+            *[!a-z0-9]*) echo "::error::AZURE_LOCATION va en formato tecnico, por ejemplo brazilsouth"; exit 1 ;;
+          esac
+          case "$POSTGRES_PASSWORD" in
+            *[!A-Za-z0-9_-]*) echo "::error::POSTGRES_PASSWORD solo puede tener letras, numeros, guion y guion bajo (va dentro de una URL)"; exit 1 ;;
+          esac
+          for name in POSTGRES_USER POSTGRES_DB; do
+            case "${!name}" in
+              *[!A-Za-z0-9_]*) echo "::error::${name} solo puede tener letras, numeros y guion bajo"; exit 1 ;;
+            esac
+          done
+          for name in APP_ENV JWT_SECRET INTERNAL_API_KEY ADMIN_EMAIL ADMIN_PASSWORD SCRAPER_CONTACT; do
+            case "${!name}" in
+              *"'"*|*$'\n'*) echo "::error::${name} no puede contener comillas simples ni saltos de linea"; exit 1 ;;
+            esac
+          done
+
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+          echo "host=${AZURE_DNS_LABEL}.${AZURE_LOCATION}.cloudapp.azure.com" >> "$GITHUB_OUTPUT"
+
+      - name: Preparar conexion SSH
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          HOST: ${{ steps.cfg.outputs.host }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          {
+            echo "Host staging"
+            echo "  HostName ${HOST}"
+            echo "  User ${DEPLOY_USER}"
+            echo "  IdentityFile ~/.ssh/id_deploy"
+            echo "  IdentitiesOnly yes"
+            echo "  StrictHostKeyChecking accept-new"
+            echo "  ConnectTimeout 15"
+            echo "  ServerAliveInterval 15"
+          } > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
+      - name: Esperar al servidor y a que termine su primer arranque
+        if: steps.cfg.outputs.enabled == 'true'
+        run: |
+          for i in $(seq 1 30); do
+            if ssh -o BatchMode=yes staging true 2>/dev/null; then
+              break
+            fi
+            if [ "$i" = "30" ]; then
+              echo "::error::No se pudo conectar por SSH al servidor. Revisar que la VM este encendida y que la llave coincida."
+              exit 1
+            fi
+            echo "Esperando al servidor... intento ${i}/30"
+            sleep 10
+          done
+          # cloud-init instala Docker en el primer arranque; en servidores ya listos termina de inmediato.
+          ssh staging 'cloud-init status --wait' || true
+          ssh staging 'docker --version && docker compose version'
+
+      - name: Preparar archivo de entorno del servidor
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          SITE_ADDRESS: ${{ steps.cfg.outputs.host }}
+        run: |
+          umask 077
+          {
+            printf "IMAGE_PREFIX='%s'\n" "$IMAGE_PREFIX"
+            printf "SITE_ADDRESS='%s'\n" "$SITE_ADDRESS"
+            printf "APP_ENV='%s'\n" "$APP_ENV"
+            printf "POSTGRES_USER='%s'\n" "$POSTGRES_USER"
+            printf "POSTGRES_DB='%s'\n" "$POSTGRES_DB"
+            printf "POSTGRES_PASSWORD='%s'\n" "$POSTGRES_PASSWORD"
+            printf "JWT_SECRET='%s'\n" "$JWT_SECRET"
+            printf "INTERNAL_API_KEY='%s'\n" "$INTERNAL_API_KEY"
+            printf "SCRAPER_CONTACT='%s'\n" "$SCRAPER_CONTACT"
+            printf "ADMIN_EMAIL='%s'\n" "$ADMIN_EMAIL"
+            printf "ADMIN_PASSWORD='%s'\n" "$ADMIN_PASSWORD"
+          } > server.env
+
+      - name: Copiar archivos de despliegue al servidor
+        if: steps.cfg.outputs.enabled == 'true'
+        run: |
+          # Si los archivos se editaron en Windows pueden traer fin de linea CRLF, que rompe bash.
+          sed -i 's/\r$//' scripts/deploy.sh Caddyfile docker-compose.staging.yml
+          scp docker-compose.staging.yml Caddyfile scripts/deploy.sh staging:/opt/listoco/
+          scp server.env staging:/opt/listoco/.env
+          ssh staging 'chmod 600 /opt/listoco/.env && chmod 755 /opt/listoco/deploy.sh'
+
+      - name: Desplegar, verificar salud y revertir si falla
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | ssh staging "docker login ghcr.io -u '${GITHUB_ACTOR}' --password-stdin"
+          ssh staging "cd /opt/listoco && ./deploy.sh '${GITHUB_SHA}'"
+
+      - name: Cerrar sesion del registro en el servidor
+        if: always() && steps.cfg.outputs.enabled == 'true'
+        run: ssh staging 'docker logout ghcr.io' || true
+
+      - name: Verificar la direccion publica
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          HOST: ${{ steps.cfg.outputs.host }}
+        run: |
+          # El primer certificado HTTPS puede tardar un poco en emitirse.
+          for i in $(seq 1 18); do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "https://${HOST}/api/health" || true)"
+            if [ "$code" = "200" ]; then
+              echo "https://${HOST}/api/health respondio 200"
+              curl -sS --max-time 10 "https://${HOST}/python/health" || true
+              echo
+              exit 0
+            fi
+            echo "Direccion publica aun sin respuesta 200 (HTTP ${code:-000}), intento ${i}/18"
+            sleep 10
+          done
+          echo "::error::https://${HOST}/api/health no respondio 200. La version quedo desplegada y sana por dentro: revisar DNS, certificado y puertos 80/443."
+          exit 1
+
+      - name: Resumen del despliegue
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          HOST: ${{ steps.cfg.outputs.host }}
         run: |
           {
-            echo "### Imagenes publicadas"
+            echo "### Despliegue en Staging finalizado"
             echo ""
             echo "Commit: \`${GITHUB_SHA}\`"
             echo ""
-            for service in frontend backend python; do
-              echo "- \`${IMAGE_PREFIX}-${service}:${GITHUB_SHA}\`"
-            done
+            echo "URL: https://${HOST}"
+            echo ""
+            echo "- \`${IMAGE_PREFIX}-frontend:${GITHUB_SHA}\`"
+            echo "- \`${IMAGE_PREFIX}-backend:${GITHUB_SHA}\`"
+            echo "- \`${IMAGE_PREFIX}-python:${GITHUB_SHA}\`"
           } >> "$GITHUB_STEP_SUMMARY"
