@@ -1,18 +1,66 @@
+# Stack de staging (se ejecuta en la VM de Azure con scripts/deploy.sh).
+# Las variables salen del archivo .env que genera el workflow de CD.
+name: listoco
+
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?Falta POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?Falta POSTGRES_DB}
     volumes:
       - postgres_staging_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
+      retries: 10
+
+  python-service:
+    image: ${IMAGE_PREFIX:?Falta IMAGE_PREFIX}-python:${IMAGE_TAG:?Falta IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?Falta INTERNAL_API_KEY}
+      SCRAPER_CONTACT: ${SCRAPER_CONTACT:-contacto-no-configurado}
+      CACHE_DIR: /app/cache
+    volumes:
+      - python_cache_staging:/app/cache
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
       retries: 5
+      start_period: 15s
+
+  backend:
+    image: ${IMAGE_PREFIX:?Falta IMAGE_PREFIX}-backend:${IMAGE_TAG:?Falta IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      APP_ENV: ${APP_ENV:?Falta APP_ENV}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      JWT_SECRET: ${JWT_SECRET:?Falta JWT_SECRET}
+      PYTHON_SERVICE_URL: http://python-service:8000
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?Falta INTERNAL_API_KEY}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      python-service:
+        condition: service_healthy
+
+  frontend:
+    image: ${IMAGE_PREFIX:?Falta IMAGE_PREFIX}-frontend:${IMAGE_TAG:?Falta IMAGE_TAG}
+    restart: unless-stopped
 
   caddy:
     image: caddy:2-alpine
@@ -20,46 +68,19 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_staging_data:/data
       - caddy_staging_config:/config
     depends_on:
       - frontend
       - backend
-
-  frontend:
-    image: ${IMAGE_PREFIX}-frontend:${IMAGE_TAG}
-    restart: unless-stopped
-
-  backend:
-    image: ${IMAGE_PREFIX}-backend:${IMAGE_TAG}
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - APP_ENV=${APP_ENV}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_PORT=${POSTGRES_PORT}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_HOST=db
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}?schema=public
-      - JWT_SECRET=${JWT_SECRET}
-      - PYTHON_SERVICE_URL=http://python-service:8000
-    depends_on:
-      db:
-        condition: service_healthy
-      python-service:
-        condition: service_started
-
-  python-service:
-    image: ${IMAGE_PREFIX}-python:${IMAGE_TAG}
-    restart: unless-stopped
-    environment:
-      - PORT=8000
+      - python-service
 
 volumes:
   postgres_staging_data:
+  python_cache_staging:
   caddy_staging_data:
   caddy_staging_config:

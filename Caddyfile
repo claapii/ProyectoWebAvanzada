@@ -1,16 +1,26 @@
-:80 {
-    # API Backend NestJS
-    handle_path /api/* {
-        reverse_proxy backend:3000
-    }
+# SITE_ADDRESS lo define el workflow de CD con el nombre DNS del servidor
+# (por ejemplo listoco-staging-ab12.brazilsouth.cloudapp.azure.com): con un nombre,
+# Caddy obtiene solo el certificado HTTPS. Sin la variable queda en HTTP, puerto 80.
+{$SITE_ADDRESS::80} {
+	encode zstd gzip
 
-    # Microservicio Python FastAPI
-    handle_path /python/* {
-        reverse_proxy python-service:8000
-    }
+	# Del servicio Python solo se publica su /health. El resto es interno: lo llama
+	# NestJS por la red de Docker con la clave interna.
+	handle /python/health {
+		rewrite * /health
+		reverse_proxy python-service:8000
+	}
+	handle /python/* {
+		respond "No encontrado" 404
+	}
 
-    # Frontend Angular / Ionic
-    handle {
-        reverse_proxy frontend:80
-    }
+	# API NestJS: /api/health llega al backend como /health.
+	handle_path /api/* {
+		reverse_proxy backend:3000
+	}
+
+	# Todo lo demas es el frontend Angular / Ionic.
+	handle {
+		reverse_proxy frontend:80
+	}
 }
