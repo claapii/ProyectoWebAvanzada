@@ -14,32 +14,55 @@
 
       <ion-card-content>
 
-        <ion-item>
-          <ion-input
-            label="Correo institucional"
-            labelPlacement="stacked"
-            type="email"
-            placeholder="nombre@pucv.cl">
-          </ion-input>
-        </ion-item>
+        <form [formGroup]="form" (ngSubmit)="iniciarSesion()" novalidate>
 
-        <ion-item>
-          <ion-input
-            label="Contraseña"
-            labelPlacement="stacked"
-            type="password"
-            placeholder="Ingrese su contraseña">
-          </ion-input>
-        </ion-item>
+          <ion-item>
+            <ion-input
+              label="Correo electrónico"
+              labelPlacement="stacked"
+              type="email"
+              autocomplete="username"
+              placeholder="nombre@pucv.cl"
+              formControlName="email">
+            </ion-input>
+          </ion-item>
+          @if (form.controls.email.touched && form.controls.email.invalid) {
+            <ion-text color="danger">
+              <small>Ingresa un correo válido.</small>
+            </ion-text>
+          }
 
-        <ion-button
-          expand="block"
-          class="login-button"
-          (click)="iniciarSesion()">
+          <ion-item>
+            <ion-input
+              label="Contraseña"
+              labelPlacement="stacked"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Ingrese su contraseña"
+              formControlName="password">
+            </ion-input>
+          </ion-item>
+          @if (form.controls.password.touched && form.controls.password.invalid) {
+            <ion-text color="danger">
+              <small>La contraseña debe tener al menos 8 caracteres.</small>
+            </ion-text>
+          }
 
-          Iniciar sesión
+          @if (error()) {
+            <p role="alert">
+              <ion-text color="danger">{{ error() }}</ion-text>
+            </p>
+          }
 
-        </ion-button>
+          <ion-button
+            expand="block"
+            type="submit"
+            class="login-button"
+            [disabled]="cargando()">
+            {{ cargando() ? 'Ingresando...' : 'Iniciar sesión' }}
+          </ion-button>
+
+        </form>
 
       </ion-card-content>
 

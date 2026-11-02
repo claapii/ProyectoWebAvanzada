@@ -9,94 +9,126 @@
   <div class="admin-container">
 
     <section class="header-section">
-      <h1>Resumen del sistema</h1>
+      <h1>Ingesta de la malla curricular</h1>
       <p>
-        Revisa solicitudes, demanda de asignaturas y otros indicadores académicos.
+        Descarga la malla oficial de la PUCV, la procesa en el servicio Python y
+        actualiza las asignaturas. Cada ejecución queda registrada con su procedencia
+        y sus métricas de calidad.
       </p>
     </section>
 
-    <div class="stats-grid">
+    <ion-button (click)="ejecutarIngesta()" [disabled]="ejecutando()">
+      {{ ejecutando() ? 'Procesando...' : 'Ejecutar ingesta ahora' }}
+    </ion-button>
+    <ion-button fill="outline" (click)="cerrarSesion()">Cerrar sesión</ion-button>
+
+    @if (ejecutando()) {
+      <div class="estado" role="status">
+        <ion-spinner name="crescent"></ion-spinner>
+      </div>
+    }
+
+    @if (error()) {
+      <p role="alert">
+        <ion-text color="danger">{{ error() }}</ion-text>
+      </p>
+    }
+
+    @if (resultado(); as r) {
+      <h2>Resultado de la última ejecución</h2>
 
       <ion-card>
         <ion-card-header>
-          <ion-card-title>Solicitudes pendientes</ion-card-title>
+          <ion-card-title>
+            Ejecución #{{ r.runId }}
+            <ion-badge [color]="colorEstado(r.status)">{{ etiquetaEstado(r.status) }}</ion-badge>
+          </ion-card-title>
         </ion-card-header>
 
         <ion-card-content>
-          <h2>12</h2>
+          <p><strong>Fuente:</strong> {{ r.provenance.sourceName }}</p>
+          <p><strong>Descargado:</strong> {{ r.provenance.fetchedAt | date: 'dd-MM-yyyy HH:mm:ss' }}</p>
+          <p><strong>Huella (SHA-256):</strong> {{ r.provenance.sha256.slice(0, 16) }}...</p>
+          <p><strong>Documento cambió:</strong>
+            {{ r.provenance.changed === null ? 'Primera descarga' : (r.provenance.changed ? 'Sí' : 'No') }}
+          </p>
         </ion-card-content>
       </ion-card>
+
+      <div class="stats-grid">
+        <ion-card>
+          <ion-card-header><ion-card-title>Asignaturas válidas</ion-card-title></ion-card-header>
+          <ion-card-content><h2>{{ r.metrics.valid }} / {{ r.metrics.candidates }}</h2></ion-card-content>
+        </ion-card>
+
+        <ion-card>
+          <ion-card-header><ion-card-title>Cobertura de semestres</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <h2>{{ r.metrics.semestersDetected }} / {{ r.metrics.semestersExpected }}</h2>
+          </ion-card-content>
+        </ion-card>
+
+        <ion-card>
+          <ion-card-header><ion-card-title>Duplicados / rechazados</ion-card-title></ion-card-header>
+          <ion-card-content><h2>{{ r.metrics.duplicates }} / {{ r.metrics.rejected }}</h2></ion-card-content>
+        </ion-card>
+      </div>
 
       <ion-card>
-        <ion-card-header>
-          <ion-card-title>Ramos con alta demanda</ion-card-title>
-        </ion-card-header>
-
         <ion-card-content>
-          <h2>3</h2>
+          <p>
+            <strong>Persistencia:</strong>
+            {{ r.persistence.created }} nuevas ·
+            {{ r.persistence.updated }} actualizadas ·
+            {{ r.persistence.unchanged }} sin cambios ·
+            {{ r.persistence.deactivated }} desactivadas
+          </p>
+          @if (r.warnings.length > 0) {
+            <p><strong>Advertencias:</strong></p>
+            <ul>
+              @for (w of r.warnings; track $index) {
+                <li>{{ w }}</li>
+              }
+            </ul>
+          }
         </ion-card-content>
       </ion-card>
+    }
 
-      <ion-card>
-        <ion-card-header>
-          <ion-card-title>Lista de espera</ion-card-title>
-        </ion-card-header>
+    <h2>Historial de ejecuciones</h2>
 
-        <ion-card-content>
-          <h2>28 estudiantes</h2>
-        </ion-card-content>
-      </ion-card>
-
-    </div>
-
-    <h2>Solicitudes recientes</h2>
-
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>Justificación de inasistencia</ion-card-title>
-      </ion-card-header>
-
-      <ion-card-content>
-        <p><strong>Asignatura:</strong> Base de Datos</p>
-        <p><strong>Estudiante:</strong> Estudiante de ejemplo</p>
-
-        <ion-badge color="warning">
-          Pendiente de revisión
-        </ion-badge>
-      </ion-card-content>
-    </ion-card>
-
-    <h2>Asignaturas con alta demanda</h2>
-
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>Base de Datos</ion-card-title>
-      </ion-card-header>
-
-      <ion-card-content>
-        <p><strong>Cupos:</strong> 40</p>
-        <p><strong>Estudiantes interesados:</strong> 73</p>
-
-        <ion-badge color="danger">
-          Alta demanda
-        </ion-badge>
-      </ion-card-content>
-    </ion-card>
-
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>Sistemas Operativos</ion-card-title>
-      </ion-card-header>
-
-      <ion-card-content>
-        <p><strong>Cupos:</strong> 40</p>
-        <p><strong>Estudiantes interesados:</strong> 58</p>
-
-        <ion-badge color="warning">
-          Demanda elevada
-        </ion-badge>
-      </ion-card-content>
-    </ion-card>
+    @if (historial().length === 0) {
+      <p>Aún no hay ejecuciones registradas.</p>
+    } @else {
+      <div class="tabla-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Fecha</th>
+              <th>Estado</th>
+              <th>Válidas</th>
+              <th>Cobertura</th>
+              <th>Duración</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (run of historial(); track run.id) {
+              <tr>
+                <td>{{ run.id }}</td>
+                <td>{{ run.startedAt | date: 'dd-MM-yyyy HH:mm' }}</td>
+                <td>
+                  <ion-badge [color]="colorEstado(run.status)">{{ etiquetaEstado(run.status) }}</ion-badge>
+                </td>
+                <td>{{ run.validCount ?? '-' }} / {{ run.candidates ?? '-' }}</td>
+                <td>{{ run.coverage === null ? '-' : (run.coverage * 100 | number: '1.0-0') + '%' }}</td>
+                <td>{{ run.durationMs === null ? '-' : run.durationMs + ' ms' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
 
   </div>
 

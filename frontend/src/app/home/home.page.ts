@@ -1,5 +1,4 @@
-import { HttpClient } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   IonButton,
@@ -12,6 +11,10 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/angular';
+
+import { ApiService } from '../core/api.service';
+import { describeError } from '../core/auth.interceptor';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   selector: 'app-home',
@@ -31,38 +34,43 @@ import {
 })
 export class HomePage {
   private readonly router = inject(Router);
-  private readonly http = inject(HttpClient);
+  private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
 
-  readonly respuestaCursos = signal('');
+  readonly user = this.auth.user;
+  readonly esAdmin = computed(() => this.user()?.role === 'ADMIN');
+
+  readonly totalCursos = signal<number | null>(null);
   readonly errorCursos = signal('');
 
-  consultarCursos() {
-    this.errorCursos.set('');
-
-    this.http.get<unknown[]>('http://localhost:3000/courses').subscribe({
-      next: (cursos) => {
-        this.respuestaCursos.set(JSON.stringify(cursos, null, 2));
-      },
-      error: () => {
-        this.respuestaCursos.set('');
-        this.errorCursos.set('No fue posible consultar los cursos.');
-      },
+  constructor() {
+    this.api.getCourses().subscribe({
+      next: (cursos) => this.totalCursos.set(cursos.length),
+      error: (err: unknown) => this.errorCursos.set(describeError(err)),
     });
   }
 
   irAPlanificacion() {
-    this.router.navigate(['/planificacion']);
+    void this.router.navigate(['/planificacion']);
   }
 
   irAHorarios() {
-    this.router.navigate(['/horarios']);
+    void this.router.navigate(['/horarios']);
   }
 
   irATramites() {
-    this.router.navigate(['/tramites']);
+    void this.router.navigate(['/tramites']);
   }
 
   irACalendario() {
-    this.router.navigate(['/calendario']);
+    void this.router.navigate(['/calendario']);
+  }
+
+  irAAdmin() {
+    void this.router.navigate(['/admin']);
+  }
+
+  cerrarSesion() {
+    this.auth.logout();
   }
 }
