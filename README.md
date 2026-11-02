@@ -304,3 +304,18 @@ Con estos pasos, el proyecto queda preparado para ejecutarse localmente o median
 ## Prototipo en Figma
 
 https://www.figma.com/proto/lDXAUd1pbXqCx57El8fokI/Listoco?node-id=0-1&t=3o8pen7MmLMEIHnp-1
+
+---
+
+## Especificación Preliminar de la Capacidad Adaptativa (Módulo 3)
+
+- **Componente a adaptar:** Motor de recomendación de proyección académica y selección de carga académica semestral.
+- **Usuario beneficiado:** Estudiante de Ingeniería Civil Informática (PUCV).
+- **Información web utilizada:** Malla curricular estructurada, prerrequisitos, asignaturas activas y créditos recuperados desde el PDF oficial de la PUCV vía el servicio FastAPI.
+- **Variables de usuario/contexto:**
+  - Historial académico (asignaturas aprobadas, reprobadas y en curso).
+  - Disponibilidad horaria y carga de créditos solicitada/deseada.
+  - Criterio de preferencia (avanzar rápidamente en la carrera vs. equilibrar la dificultad y carga académica).
+- **Decisión del sistema:** Algoritmo de recomendación basado en reglas de prelación y optimización de carga que genera una sugerencia de inscripción de asignaturas para el siguiente período académico.
+- **Mecanismo de control para el usuario:** El estudiante puede revisar los motivos de cada recomendación (ej. liberación de cadenas de prerrequisitos), modificar la selección sugerida de forma manual o ajustar ponderadores de preferencia.
+- **Evaluación proyectada:** Medición de la tasa de aceptación de recomendaciones sugeridas por el sistema y evaluación de satisfacción con la carga académica percibida.
