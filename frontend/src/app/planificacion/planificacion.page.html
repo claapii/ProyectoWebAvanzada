@@ -9,59 +9,77 @@
   <div class="planificacion-container">
 
     <section class="header-section">
-      <h1>Mis asignaturas</h1>
+      <h1>Malla curricular</h1>
       <p>
-        Revisa las asignaturas disponibles según tu avance curricular y sus prerrequisitos.
+        Asignaturas de la carrera obtenidas desde la fuente oficial de la PUCV.
       </p>
     </section>
 
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>Base de Datos</ion-card-title>
-      </ion-card-header>
+    @if (procedencia(); as p) {
+      <p class="procedencia">
+        <small>
+          Fuente: <a [href]="p.fuente.url" target="_blank" rel="noopener noreferrer">{{ p.fuente.name }}</a>
+          @if (p.actualizado) {
+            · Actualizado: {{ p.actualizado | date: 'dd-MM-yyyy HH:mm' }}
+          }
+        </small>
+      </p>
+    }
 
-      <ion-card-content>
-        <p><strong>Código:</strong> INF-XXX</p>
-        <p><strong>Créditos:</strong> 6</p>
-        <p><strong>Prerrequisito:</strong> Programación II</p>
+    <ion-searchbar
+      placeholder="Buscar asignatura"
+      [debounce]="400"
+      (ionInput)="buscar($event)">
+    </ion-searchbar>
 
-        <ion-badge color="success">
-          Disponible
-        </ion-badge>
-      </ion-card-content>
-    </ion-card>
+    <ion-select
+      label="Semestre"
+      labelPlacement="stacked"
+      interface="popover"
+      placeholder="Todos"
+      [value]="semestre()"
+      (ionChange)="cambiarSemestre($event.detail.value)">
+      <ion-select-option [value]="null">Todos</ion-select-option>
+      @for (s of semestres; track s) {
+        <ion-select-option [value]="s">Semestre {{ s }}</ion-select-option>
+      }
+    </ion-select>
 
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>Sistemas Operativos</ion-card-title>
-      </ion-card-header>
+    @if (cargando()) {
+      <div class="estado" role="status">
+        <ion-spinner name="crescent"></ion-spinner>
+        <p>Cargando asignaturas...</p>
+      </div>
+    } @else if (error()) {
+      <p role="alert">
+        <ion-text color="danger">{{ error() }}</ion-text>
+      </p>
+    } @else if (grupos().length === 0) {
+      <p>No hay asignaturas para mostrar. Un administrador debe ejecutar la ingesta de la malla.</p>
+    } @else {
+      @for (grupo of grupos(); track grupo.semestre) {
+        <h2>Semestre {{ grupo.semestre }}</h2>
 
-      <ion-card-content>
-        <p><strong>Código:</strong> INF-XXX</p>
-        <p><strong>Créditos:</strong> 5</p>
-        <p><strong>Prerrequisito:</strong> Arquitectura de Computadores</p>
+        @for (curso of grupo.cursos; track curso.id) {
+          <ion-card>
+            <ion-card-header>
+              <ion-card-title>{{ curso.name }}</ion-card-title>
+            </ion-card-header>
 
-        <ion-badge color="danger">
-          Bloqueado
-        </ion-badge>
-      </ion-card-content>
-    </ion-card>
-
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>Ingeniería Web Avanzada</ion-card-title>
-      </ion-card-header>
-
-      <ion-card-content>
-        <p><strong>Código:</strong> INF-XXX</p>
-        <p><strong>Créditos:</strong> 5</p>
-        <p><strong>Prerrequisito:</strong> Ingeniería Web</p>
-
-        <ion-badge color="success">
-          Disponible
-        </ion-badge>
-      </ion-card-content>
-    </ion-card>
+            <ion-card-content>
+              <p><strong>Código:</strong> {{ curso.code }}</p>
+              <p>
+                <strong>Créditos:</strong>
+                {{ curso.credits ?? 'No publicado por la fuente' }}
+              </p>
+              @if (curso.category) {
+                <ion-badge color="medium">{{ curso.category }}</ion-badge>
+              }
+            </ion-card-content>
+          </ion-card>
+        }
+      }
+    }
 
   </div>
 

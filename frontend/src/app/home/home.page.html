@@ -10,18 +10,26 @@
 
     <section class="welcome-section">
       <h1>Hola 👋</h1>
+      @if (user(); as u) {
+        <p>{{ u.email }}</p>
+      }
       <p>Bienvenido a tu espacio académico.</p>
     </section>
 
     <ion-card>
       <ion-card-header>
-        <ion-card-title>Resumen académico</ion-card-title>
+        <ion-card-title>Malla curricular</ion-card-title>
       </ion-card-header>
 
       <ion-card-content>
-        <p><strong>5 asignaturas</strong></p>
-        <p>30 créditos inscritos</p>
-        <p>Semestre actual: 6°</p>
+        @if (totalCursos() !== null) {
+          <p><strong>{{ totalCursos() }} asignaturas</strong></p>
+          <p>Obtenidas desde la fuente oficial de la PUCV.</p>
+        } @else if (errorCursos()) {
+          <p role="alert">{{ errorCursos() }}</p>
+        } @else {
+          <p>Cargando...</p>
+        }
       </ion-card-content>
     </ion-card>
 
@@ -29,80 +37,33 @@
 
     <div class="quick-actions">
 
-      <ion-button
-        expand="block"
-        (click)="irAPlanificacion()">
+      <ion-button expand="block" (click)="irAPlanificacion()">
         Planificación académica
       </ion-button>
 
-      <ion-button
-        expand="block"
-        (click)="irAHorarios()">
+      <ion-button expand="block" (click)="irAHorarios()">
         Generar horario
       </ion-button>
 
-      <ion-button
-        expand="block"
-        (click)="irATramites()">
+      <ion-button expand="block" (click)="irATramites()">
         Trámites académicos
       </ion-button>
 
-      <ion-button
-        expand="block"
-        (click)="irACalendario()">
+      <ion-button expand="block" (click)="irACalendario()">
         Calendario
       </ion-button>
 
-    </div>
-
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>Próxima actividad</ion-card-title>
-      </ion-card-header>
-
-      <ion-card-content>
-        <p><strong>Base de Datos</strong></p>
-        <p>Certamen 1</p>
-        <p>Lunes - 10:00 hrs</p>
-      </ion-card-content>
-    </ion-card>
-
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>Notificaciones</ion-card-title>
-      </ion-card-header>
-
-      <ion-card-content>
-        <p>• Tienes una evaluación próxima.</p>
-        <p>• Una solicitud académica se encuentra en revisión.</p>
-      </ion-card-content>
-    </ion-card>
-
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>Conexión con backend</ion-card-title>
-      </ion-card-header>
-
-      <ion-card-content>
-        <p>
-          Consulta de cursos almacenados en PostgreSQL mediante NestJS.
-        </p>
-
-        <ion-button
-          expand="block"
-          (click)="consultarCursos()">
-          Consultar cursos
+      @if (esAdmin()) {
+        <ion-button expand="block" color="secondary" (click)="irAAdmin()">
+          Panel administrador
         </ion-button>
+      }
 
-        @if (respuestaCursos()) {
-          <pre>{{ respuestaCursos() }}</pre>
-        }
+      <ion-button expand="block" fill="outline" (click)="cerrarSesion()">
+        Cerrar sesión
+      </ion-button>
 
-        @if (errorCursos()) {
-          <p>{{ errorCursos() }}</p>
-        }
-      </ion-card-content>
-    </ion-card>
+    </div>
 
   </div>
 
